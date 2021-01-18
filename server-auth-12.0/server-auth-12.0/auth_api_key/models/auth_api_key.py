@@ -31,7 +31,7 @@ class AuthApiKey(models.Model):
         ("name_uniq", "unique(name)", "Api Key name must be unique.")
     ]
 
-    @api.multi
+    #@api.multi
     def _server_env_section_name(self):
         """Name of the section in the configuration files
 
