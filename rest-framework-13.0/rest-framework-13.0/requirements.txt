@@ -4,6 +4,3 @@ parse-accept-language
 jsondiff
 graphene
 graphql-server-core
-marshmallow
-marshmallow-objects>=2.0.0
-apispec
