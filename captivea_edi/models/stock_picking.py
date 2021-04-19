@@ -5,6 +5,7 @@ import csv
 import ssl
 import ftplib
 from ftplib import FTP, FTP_TLS
+import pysftp
 
 from odoo import api, fields, models, SUPERUSER_ID, _
 from odoo.exceptions import UserError, ValidationError, Warning
@@ -55,9 +56,6 @@ class Picking(models.Model):
             ftpuser = company['ftp_user']
             ftpsecret = company['ftp_secret']
             ftpdpath = company['ftp_dpath']
-            #set context for secure conection
-            ftpcontext = ssl.create_default_context()
-            
             file_name = '/tmp/' + str(DOC_PREFIX_ASN) + '_' + \
                         str(order.name) + '_' + str(order.partner_id.name) \
                         +'.csv' # mayBe Edi_reference is better
@@ -154,25 +152,38 @@ class Picking(models.Model):
                         'INNER PACKS PER OUTER PACK': 'null'
                     })
                 writer.writerows(cvs_rows)
+                file_pointer.close()
             try:
-                #connection itself
-                if company['ftp_tls']:
-                    sftp = FTP_TLS()
-                    sftp.context = ftpcontext
-                else:
-                    sftp = FTP()
-                if sftp.connect(ftpserver, ftpport):
-                    if sftp.login(ftpuser,ftpsecret):
-                        sftp.cwd(ftpdpath) # Path where to get files
-                        with open(file_name, 'rb') as fp:
-                            sftp.storbinary(
-                                "STOR " + file_name.replace('/tmp/',''), fp)
-                            sftp.quit()
-                    else:
-                        raise Warning('FTP Login failed!')
+                cnopts = pysftp.CnOpts()
+                cnopts.hostkeys = None
+                sftp = pysftp.Connection(host=ftpserver, username=ftpuser, password=ftpsecret, port=ftpport,
+                                         cnopts=cnopts)
+                if sftp:
+                    sftp.cwd(ftpdpath)
+                    sftp.put(file_name, ftpdpath + '/' + str(DOC_PREFIX_ASN) + '_' + str(order.name) + '_' + \
+                             str(order.partner_id.name) + '.csv')
+                    sftp.close()
                 else:
                     raise Warning('FTP Conection failed!')
-            except ftplib.all_errors as e:
+
+                #connection itself
+                # if company['ftp_tls']:
+                #     sftp = FTP_TLS()
+                #     sftp.context = ftpcontext
+                # else:
+                #     sftp = FTP()
+                # if sftp.connect(ftpserver, ftpport):
+                #     if sftp.login(ftpuser,ftpsecret):
+                #         sftp.cwd(ftpdpath) # Path where to get files
+                #         with open(file_name, 'rb') as fp:
+                #             sftp.storbinary(
+                #                 "STOR " + file_name.replace('/tmp/',''), fp)
+                #             sftp.quit()
+                #     else:
+                #         raise Warning('FTP Login failed!')
+                # else:
+                #     raise Warning('FTP Conection failed!')
+            except Exception as e:
                 raise Warning(_('FTP error: %s') % e)
             # ENDS ASN
             order._create_invoices() # Create Draft Invoice

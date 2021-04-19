@@ -10,6 +10,7 @@ from ftplib import FTP, FTP_TLS
 from datetime import datetime
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError, Warning
+import pysftp
 
 DOC_PREFIX_PO = '850' # Prefix for Purchase Order Document
 DOC_PREFIX_POC = '860' # Prefix for Purchase Order Change Document
@@ -123,31 +124,20 @@ class CaptiveaEdiProcess(models.TransientModel):
         ftpdpath = company['ftp_dpath']
         if not ftpdpath:
             raise Warning('FTP DropPath parameter missed!')
-        #set context for secure conection
-        ftpcontext = ssl.create_default_context()
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None
         try:
-            #connection itself
-            if company['ftp_tls']:
-                sftp = FTP_TLS(ftpserver)
-                sftp.context = ftpcontext
-            else:
-                sftp = FTP(ftpserver)
-            if sftp.connect(ftpserver, ftpport):
-                if sftp.login(ftpuser, ftpsecret):
-                    sftp.cwd(ftpgpath) # Path where to get files
-                    lstfile = sftp.nlst()
-                    for ftpfile in lstfile:
-                        filebuffer = io.BytesIO()
-                        csvfile = sftp.retrbinary("RETR " + ftpfile,
-                                                  filebuffer.write)
-                        filebuffer.seek(0)
-                        # Can we read in pandas too
-                        csvdata = csv.DictReader(
-                            io.TextIOWrapper(filebuffer, newline=None),
-                            delimiter=',')
+            sftp = pysftp.Connection(host=ftpserver, username=ftpuser, password=ftpsecret, port=ftpport, cnopts=cnopts)
+            if sftp:
+                sftp.cwd(ftpgpath)
+                directory_structure = sftp.listdir_attr()
+                for attr in directory_structure:
+                    file_path = ftpgpath + '/' + attr.filename
+                    if sftp.isfile(file_path):
+                        csvfile = open(file_path, newline='')
+                        csvdata = csv.DictReader(csvfile)
                         vals = {}
                         for row in csvdata: # Processing file begins here.
-                            #
                             vals = {'create_date': datetime.now(),
                                     'transaction_id': row["TRANSACTION ID"],
                                     'accounting_id': row["ACCOUNTING ID"],
@@ -211,22 +201,20 @@ class CaptiveaEdiProcess(models.TransientModel):
                                 current_orders.append(vals['po_number'])
                             if not res:
                                 return False
-                    # Delete files once processed
-                    ##### This code is commented for testing purpose as we dont need to remove the file.
-                    # for ftpfile in lstfile:
-                    #     try:
-                    #         sftp.delete(ftpfile)
-                    #     except:
-                    #         continue
-                    sftp.quit()
-                    #return data
-                    return current_orders
-                else:
-                    sftp.quit()
-                    return False
+                # Delete files once processed
+                ##### This code is commented for testing purpose as we dont need to remove the file.
+                # for attr in directory_structure:
+                #     file_path = ftpgpath + '/' + attr.filename
+                #     if sftp.isfile(file_path):
+                #         try:
+                #             sftp.remove(file_path)
+                #         except:
+                #             continue
+                sftp.close()
+                return current_orders
             else:
                 return False
-        except ftplib.all_errors as e:
+        except Exception as e:
                 raise Warning(_('FTP error: %s') % e)
 
     def _create_edi_poack(self, current_orders, DOC_PREFIX_POA):
@@ -242,8 +230,6 @@ class CaptiveaEdiProcess(models.TransientModel):
         ftpuser = company['ftp_user']
         ftpsecret = company['ftp_secret']
         ftpdpath = company['ftp_dpath']
-        #set context for secure conection
-        ftpcontext = ssl.create_default_context()
         for order in current_orders:
             file_name = '/tmp/' + str(DOC_PREFIX_POA) + '_' + str(order) + \
                         '_' + '.csv' # TO DO COMPLETE FILE NAME WITH CUSTOMER NAME
@@ -299,25 +285,18 @@ class CaptiveaEdiProcess(models.TransientModel):
                         'STATUS UOM': 'null'
                     })                                                    
                 writer.writerows(cvs_rows)
+                file_pointer.close()
             try:
-                #connection itself
-                if company['ftp_tls']:
-                    sftp = FTP_TLS(ftpserver)
-                    sftp.context = ftpcontext
-                else:
-                    sftp = FTP(ftpserver)
-                if sftp.connect(ftpserver, ftpport):
-                    if sftp.login(ftpuser, ftpsecret):
-                        sftp.cwd(ftpdpath) # Path where to get files
-                        with open(file_name, 'rb') as fp:
-                            sftp.storbinary("STOR " +
-                                            file_name.replace('/tmp/', ''), fp)
-                            sftp.quit()
-                    else:
-                        return False
+                cnopts = pysftp.CnOpts()
+                cnopts.hostkeys = None
+                sftp = pysftp.Connection(host=ftpserver, username=ftpuser, password=ftpsecret, port=22, cnopts=cnopts)
+                if sftp:
+                    sftp.cwd(ftpdpath)
+                    sftp.put(file_name, ftpdpath + '/' + str(DOC_PREFIX_POA) + '_' + str(order) + '_.csv')
+                    sftp.close()
                 else:
                     return False
-            except ftplib.all_errors as e:
+            except Exception as e:
                 raise Warning(_('FTP error: %s') % e)
 
     def run_edi_process(self):

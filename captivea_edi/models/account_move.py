@@ -3,6 +3,7 @@
 import csv
 import ssl
 import ftplib
+import pysftp
 from ftplib import FTP, FTP_TLS
 
 from odoo import api, fields, models, _
@@ -52,9 +53,6 @@ class AccountMove(models.Model):
             ftpuser = company['ftp_user']
             ftpsecret = company['ftp_secret']
             ftpdpath = company['ftp_dpath']
-            #set context for secure conection
-            ftpcontext = ssl.create_default_context()
-            
             file_name = '/tmp/' + str(DOC_PREFIX_BIL) + '_' + \
                         str(order.edi_reference) + '_' + \
                         str(order.partner_id.name) + '.csv'
@@ -137,23 +135,35 @@ class AccountMove(models.Model):
                     })                                                    
                 writer.writerows(cvs_rows)
             try:
+                cnopts = pysftp.CnOpts()
+                cnopts.hostkeys = None
+                sftp = pysftp.Connection(host=ftpserver, username=ftpuser, password=ftpsecret, port=ftpport,
+                                         cnopts=cnopts)
+                if sftp:
+                    sftp.cwd(ftpdpath)
+                    sftp.put(file_name, ftpdpath + '/' + str(DOC_PREFIX_BIL) + '_' + str(order.edi_reference) + '_' \
+                             + str(order.partner_id.name) + '.csv')
+                    sftp.close()
+                else:
+                    return False
+
                 #connection itself
-                if company['ftp_tls']:
-                    sftp = FTP_TLS()
-                    sftp.context = ftpcontext
-                else:
-                    sftp = FTP()
-                if sftp.connect(ftpserver, ftpport):
-                    if sftp.login(ftpuser, ftpsecret):
-                        sftp.cwd(ftpdpath) # Path where to get files
-                        with open(file_name, 'rb') as fp:
-                            sftp.storbinary("STOR " + file_name.replace('/tmp/',''), fp)
-                            sftp.quit()
-                    else:
-                        raise Warning('FTP Login failed!')
-                else:
-                    raise Warning('FTP Conection failed!')
-            except ftplib.all_errors as e:
+                # if company['ftp_tls']:
+                #     sftp = FTP_TLS()
+                #     sftp.context = ftpcontext
+                # else:
+                #     sftp = FTP()
+                # if sftp.connect(ftpserver, ftpport):
+                #     if sftp.login(ftpuser, ftpsecret):
+                #         sftp.cwd(ftpdpath) # Path where to get files
+                #         with open(file_name, 'rb') as fp:
+                #             sftp.storbinary("STOR " + file_name.replace('/tmp/',''), fp)
+                #             sftp.quit()
+                #     else:
+                #         raise Warning('FTP Login failed!')
+                # else:
+                #     raise Warning('FTP Conection failed!')
+            except Exception as e:
                 raise Warning(_('FTP error: %s') % e)
             # ENDS EDI INVOICE
         return res
