@@ -2,9 +2,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import csv
-import ssl
-import ftplib
-from ftplib import FTP, FTP_TLS
 import pysftp
 
 from odoo import api, fields, models, SUPERUSER_ID, _
@@ -165,26 +162,13 @@ class Picking(models.Model):
                     sftp.close()
                 else:
                     raise Warning('FTP Conection failed!')
-
-                #connection itself
-                # if company['ftp_tls']:
-                #     sftp = FTP_TLS()
-                #     sftp.context = ftpcontext
-                # else:
-                #     sftp = FTP()
-                # if sftp.connect(ftpserver, ftpport):
-                #     if sftp.login(ftpuser,ftpsecret):
-                #         sftp.cwd(ftpdpath) # Path where to get files
-                #         with open(file_name, 'rb') as fp:
-                #             sftp.storbinary(
-                #                 "STOR " + file_name.replace('/tmp/',''), fp)
-                #             sftp.quit()
-                #     else:
-                #         raise Warning('FTP Login failed!')
-                # else:
-                #     raise Warning('FTP Conection failed!')
             except Exception as e:
-                raise Warning(_('FTP error: %s') % e)
+                if len(e.args) > 1:
+                    if e.args[1] == 22:
+                        raise Warning('Invalid Server Details')
+                    raise Warning(e.args[1])
+                else:
+                    raise Warning(e.args[0])
             # ENDS ASN
             order._create_invoices() # Create Draft Invoice
         return res

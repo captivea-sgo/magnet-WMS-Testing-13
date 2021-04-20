@@ -14,8 +14,9 @@
                         <field name="ftp_dpath"/>
                         <field name="ftp_user"/>
                         <field name="ftp_secret" password="True"/>
-			            <field name="ftp_tls"/>
+<!--			            <field name="ftp_tls"/>-->
                         <field name="enable_cron"/>
+                        <field name="ir_cron_id" readonly="1" force_save="1" attrs="{'invisible': [('enable_cron', '=', False)]}"/>
                     </group>
                 </page>
             </xpath>

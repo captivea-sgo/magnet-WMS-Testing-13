@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-import io
 import csv
-import ssl
-import ftplib
 import datetime
-from ftplib import FTP, FTP_TLS
 from datetime import datetime
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError, Warning
@@ -134,7 +130,7 @@ class CaptiveaEdiProcess(models.TransientModel):
                 for attr in directory_structure:
                     file_path = ftpgpath + '/' + attr.filename
                     if sftp.isfile(file_path):
-                        csvfile = open(file_path, newline='')
+                        csvfile = sftp.open(file_path)
                         csvdata = csv.DictReader(csvfile)
                         vals = {}
                         for row in csvdata: # Processing file begins here.
@@ -215,7 +211,12 @@ class CaptiveaEdiProcess(models.TransientModel):
             else:
                 return False
         except Exception as e:
-                raise Warning(_('FTP error: %s') % e)
+            if len(e.args) > 1:
+                if e.args[1] == 22:
+                    raise Warning('Invalid Server Details')
+                raise Warning(e.args[1])
+            else:
+                raise Warning(e.args[0])
 
     def _create_edi_poack(self, current_orders, DOC_PREFIX_POA):
         """
@@ -297,7 +298,12 @@ class CaptiveaEdiProcess(models.TransientModel):
                 else:
                     return False
             except Exception as e:
-                raise Warning(_('FTP error: %s') % e)
+                if len(e.args) > 1:
+                    if e.args[1] == 22:
+                        raise Warning('Invalid Server Details')
+                    raise Warning(e.args[1])
+                else:
+                    raise Warning(e.args[0])
 
     def run_edi_process(self):
         self.ensure_one()
