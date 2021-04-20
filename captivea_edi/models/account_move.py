@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import csv
-import ssl
-import ftplib
 import pysftp
-from ftplib import FTP, FTP_TLS
 
 from odoo import api, fields, models, _
 
@@ -146,24 +143,12 @@ class AccountMove(models.Model):
                     sftp.close()
                 else:
                     return False
-
-                #connection itself
-                # if company['ftp_tls']:
-                #     sftp = FTP_TLS()
-                #     sftp.context = ftpcontext
-                # else:
-                #     sftp = FTP()
-                # if sftp.connect(ftpserver, ftpport):
-                #     if sftp.login(ftpuser, ftpsecret):
-                #         sftp.cwd(ftpdpath) # Path where to get files
-                #         with open(file_name, 'rb') as fp:
-                #             sftp.storbinary("STOR " + file_name.replace('/tmp/',''), fp)
-                #             sftp.quit()
-                #     else:
-                #         raise Warning('FTP Login failed!')
-                # else:
-                #     raise Warning('FTP Conection failed!')
             except Exception as e:
-                raise Warning(_('FTP error: %s') % e)
+                if len(e.args) > 1:
+                    if e.args[1] == 22:
+                        raise Warning('Invalid Server Details')
+                    raise Warning(e.args[1])
+                else:
+                    raise Warning(e.args[0])
             # ENDS EDI INVOICE
         return res
