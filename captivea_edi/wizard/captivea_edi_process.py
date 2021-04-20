@@ -306,8 +306,7 @@ class CaptiveaEdiProcess(models.TransientModel):
                     raise Warning(e.args[0])
 
     def run_edi_process(self):
-        self.ensure_one()
-        current_orders = self._grab_ftp_files()        
+        current_orders = self._grab_ftp_files()
         if current_orders:
             # Write POA File to FTP
             self._create_edi_poack(current_orders, DOC_PREFIX_POA)
