@@ -1,3 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-captivea_user_permission_doclog,User Permission EDI Document Log,model_captivea_edidocumentlog,group_captivea_edi_user,1,1,1,1
-captivea_user_permission_edipro,User Permission EDI Manual Process,model_captivea_ediprocess,group_captivea_edi_user,1,1,1,1
