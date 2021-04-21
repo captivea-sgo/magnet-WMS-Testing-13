@@ -1,11 +1,15 @@
 <?xml version="1.0"?>
 <odoo>
 
-  <record id="view_order_form" model="ir.ui.view">
+  <record id="cap_edi_view_order_form" model="ir.ui.view">
     <field name="name">sale.order.form</field>
     <field name="model">sale.order</field>
     <field name="inherit_id" ref="sale.view_order_form"/>
     <field name="arch" type="xml">
+      <xpath expr="//header/field[@name='state']" position="before">
+        <button name="create_edi_poack" type="object" class="btn-primary" string="EDI 855"
+                attrs="{'invisible': [('edi_reference', '=', False)]}"/>
+      </xpath>
       <field name='payment_term_id' position='after'>
         <field name="edi_reference"/>
       </field>
