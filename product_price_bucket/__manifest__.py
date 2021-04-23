@@ -2,11 +2,12 @@
 
 {
     "name": "Product Pricing Bucket", 
-    "version": "13.0.0.2",
+    "version": "13.0.0.3",
     "author": "", 
     "category": "Product", 
     "description": """
-
+This module allows the creation of Price Classes that will allow the grouping of products that can be used in Pricelists.
+========================================================================
     """,
     "website": "", 
     "license": "Other proprietary", 
