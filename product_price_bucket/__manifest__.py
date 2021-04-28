@@ -2,7 +2,7 @@
 
 {
     "name": "Product Pricing Bucket", 
-    "version": "13.0.0.3",
+    "version": "13.0.0.4",
     "author": "", 
     "category": "Product", 
     "description": """
