@@ -100,7 +100,6 @@ class Pricelist(models.Model):
             prod_tmpl_ids = [product.product_tmpl_id.id for product in products]
 
         items = self._compute_price_rule_get_items(products_qty_partner, date, uom_id, prod_tmpl_ids, prod_ids, categ_ids)
-
         results = {}
         for product, qty, partner in products_qty_partner:
             results[product.id] = 0.0
@@ -158,13 +157,15 @@ class Pricelist(models.Model):
                     ### MADE CHANGE HERE #####
                     ## Added conditions if price class is configured on product and is set on rule will be selected as
                     # rule to be affected. else it will work normal as it was working.
-                    if product.pricing_bucket_id and product.pricing_bucket_id == rule.pricing_bucket_id:
-                        price = product.price_compute(rule.base)[product.id]
-                    elif not product.pricing_bucket_id:
-                        price = product.price_compute(rule.base)[product.id]
+                    if rule.applied_on == '4_pricing_bucket':
+                        if product.pricing_bucket_id and product.pricing_bucket_id == rule.pricing_bucket_id:
+                            price = product.price_compute(rule.base)[product.id]
+                        elif not product.pricing_bucket_id:
+                            price = product.price_compute(rule.base)[product.id]
+                        else:
+                            continue
                     else:
-                        continue
-
+                        price = product.price_compute(rule.base)[product.id]
                 if price is not False:
                     price = rule._compute_price(price, price_uom, product, quantity=qty, partner=partner)
                     suitable_rule = rule
