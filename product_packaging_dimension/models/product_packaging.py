@@ -8,7 +8,7 @@ class ProductPackaging(models.Model):
 
     max_weight = fields.Float("Weight (lb)",digits=(8,4))
     # lngth IS NOT A TYPO https://github.com/odoo/odoo/issues/41353
-    lngth = fields.Integer("Length (in)", help="length in inches
+    lngth = fields.Integer("Length (in)", help="length in inches")
     # Although it feels weird to use Integer in millimeters, we use Int to
     # override the fields from delivery module instead of defining new ones
     width = fields.Integer("Width (in)", help="width in inches")
