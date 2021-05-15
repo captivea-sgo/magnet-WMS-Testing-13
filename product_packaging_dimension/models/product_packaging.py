@@ -6,7 +6,7 @@ from odoo import api, fields, models
 class ProductPackaging(models.Model):
     _inherit = "product.packaging"
 
-    max_weight = fields.Float("Weight (lb)",digits=(8,4))
+    max_weight = fields.Float("Weight (lb)")
     # lngth IS NOT A TYPO https://github.com/odoo/odoo/issues/41353
     lngth = fields.Integer("Length (in)", help="length in inches
     # Although it feels weird to use Integer in millimeters, we use Int to
