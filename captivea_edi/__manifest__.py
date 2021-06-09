@@ -20,6 +20,7 @@
         'data/ir_cron_jobs.xml',
         'views/res_partner_views.xml',
         'views/setu_edi_export_views.xml'
+        
     ],
     'installable': True,
     'application': True,
