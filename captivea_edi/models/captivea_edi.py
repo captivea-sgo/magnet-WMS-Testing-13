@@ -176,7 +176,7 @@ class CaptiveaEdiDocumentLog(models.Model):
                 limit=1)
             if not order:
                 partner = self.env['res.partner'].sudo().search(
-                    [('name', '=', log_line.accounting_id)], limit=1)
+                    [('x_edi_accounting_id', '=', log_line.accounting_id)], limit=1)
                 if partner and product:
                     shipping_partner = self.env['res.partner'].sudo().search(
                         [('x_edi_store_number', '=', log_line.store_number)], limit=1)

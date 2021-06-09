@@ -103,7 +103,7 @@ class CaptiveaEdiProcess(models.TransientModel):
         # Partner Validation
 
         if not self.env['res.partner'].sudo().search(
-                [('name', '=', vals['accounting_id']),
+                [('x_edi_accounting_id', '=', vals['accounting_id']),
                  ('x_edi_flag', '=', True)]):
             validation_msg = "Failed! Customer does not exists."
         else:
