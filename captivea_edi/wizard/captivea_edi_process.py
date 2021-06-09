@@ -2,20 +2,19 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import csv
-import pysftp
 import datetime
 from datetime import datetime
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError, Warning
+import pysftp
 
-
-DOC_PREFIX_PO = '850' # Prefix for Purchase Order Document
-DOC_PREFIX_POC = '860' # Prefix for Purchase Order Change Document
-DOC_PREFIX_POA = '855' # Prefix for Purchase Order Aknowledgment Document
-DOC_PREFIX_ASN = '856' # Prefix for Advanced Ship Notice Document
-DOC_PREFIX_BIL = '810' # Prefix for Invoice Document
-DOC_PREFIX_INV = '846' # Prefix for Inventory Document
-CURRENT_ORDERS = list() # Current Processed Orders REMOVE THIS LATER NOT NEEDED ANYMORE
+DOC_PREFIX_PO = '850'  # Prefix for Purchase Order Document
+DOC_PREFIX_POC = '860'  # Prefix for Purchase Order Change Document
+DOC_PREFIX_POA = '855'  # Prefix for Purchase Order Aknowledgment Document
+DOC_PREFIX_ASN = '856'  # Prefix for Advanced Ship Notice Document
+DOC_PREFIX_BIL = '810'  # Prefix for Invoice Document
+DOC_PREFIX_INV = '846'  # Prefix for Inventory Document
+CURRENT_ORDERS = list()  # Current Processed Orders REMOVE THIS LATER NOT NEEDED ANYMORE
 POA_FIELDS = ['TRANSACTION ID', 'ACCOUNTING ID', 'PURPOSE', 'TYPE STATUS',
               'PO #', 'PO DATE', 'RELEASE NUMBER', 'REQUEST REFERENCE NUMBER',
               'CONTRACT NUMBER', 'SELLING PARTY NAME',
@@ -55,43 +54,62 @@ class CaptiveaEdiProcess(models.TransientModel):
     _name = 'captivea.ediprocess'
     _description = 'EDI manual handler model'
 
+    sftp_instance = fields.Many2one('setu.sftp', 'Instance')
     active = fields.Boolean('Active?', default=True)
     state = fields.Selection([('init', 'init'), ('done', 'done')],
                              string='State', readonly=True, default='init')
+    import_850 = fields.Boolean()
+    export_855 = fields.Boolean()
+
+    def button_execute(self):
+        if self.import_850:
+            self.run_edi_process()
+
+        elif self.export_855:
+            self.manual_export_poack()
+
+        else:
+            pass
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'reload',
+        }
+
+    def manual_export_poack(self):
+        sales = self.env['sale.order'].search([('poack_created', '=', False),
+                                               ('customer_po_ref', '!=', False),
+                                               ('state', '=', 'sale')])
+        for sale in sales:
+            sale.poack_export(sale.poack_ref, '855')
 
     @api.model
-    def _write_edi_doclog(self,vals):
+    def _write_edi_doclog(self, vals, log_id):
         try:
             doclog = self.env['captivea.edidocumentlog']
-            doclog.sudo().create(vals)            
-            return True
+            log = doclog.sudo().create_and_add(vals, log_id)
+            return log
         except:
-            raise Warning('Error writing logdoc!')
-            return False
-    
+            pass
+
     def _validate_order(self, vals):
         """
         Function validate the request qty, product, customer, etc.
         :param vals:
         :return: status / validation msg
         """
-        #Partner Validation
+        # Partner Validation
+
         if not self.env['res.partner'].sudo().search(
-                [('name','=',vals['accounting_id'])]):
+                [('name', '=', vals['accounting_id']),
+                 ('x_edi_flag', '=', True)]):
             validation_msg = "Failed! Customer does not exists."
         else:
-            #Product Validation
+            # Product Validation
             if not self.env['product.product'].sudo().search(
-                    [('default_code','=',vals['vendor_part_num'])]):
+                    [('default_code', '=', vals['vendor_part_num'])]):
                 validation_msg = "Failed! Product does not exists."
             else:
-                #Stock Validation
-                qty = self.env['product.product'].sudo().search(
-                    [('default_code','=',vals['vendor_part_num'])], limit=1)
-                if not (qty.qty_available > float(vals['quantity'])):
-                    validation_msg = "Failed! Not enough stock"
-                else:
-                    validation_msg = "Pass"
+                validation_msg = "Pass"
         return validation_msg
 
     def _grab_ftp_files(self):
@@ -103,22 +121,23 @@ class CaptiveaEdiProcess(models.TransientModel):
         """
         current_orders = list()
         company = self.env.company
-        ftpserver = company['ftp_server']
+        sftp_conf = self.env['setu.sftp'].search([('company_id', '=', company.id)])
+        ftpserver = sftp_conf['ftp_server']
         if not ftpserver:
             raise Warning('FTP Host parameter missed!')
-        ftpport = company['ftp_port']
+        ftpport = sftp_conf['ftp_port']
         if not ftpport:
             raise Warning('FTP Port parameter missed!')
-        ftpuser = company['ftp_user']
+        ftpuser = sftp_conf['ftp_user']
         if not ftpuser:
             raise Warning('FTP User parameter missed!')
-        ftpsecret = company['ftp_secret']
+        ftpsecret = sftp_conf['ftp_secret']
         if not ftpsecret:
             raise Warning('FTP password parameter missed!')
-        ftpgpath = company['ftp_gpath']
+        ftpgpath = sftp_conf['ftp_gpath']
         if not ftpgpath:
             raise Warning('FTP GrabPath parameter missed!')
-        ftpdpath = company['ftp_dpath']
+        ftpdpath = sftp_conf['ftp_poack_dpath']
         if not ftpdpath:
             raise Warning('FTP DropPath parameter missed!')
         cnopts = pysftp.CnOpts()
@@ -133,8 +152,9 @@ class CaptiveaEdiProcess(models.TransientModel):
                     if sftp.isfile(file_path):
                         csvfile = sftp.open(file_path)
                         csvdata = csv.DictReader(csvfile)
-                        vals = {}
-                        for row in csvdata: # Processing file begins here.
+                        log_id = False
+                        log_ids = []
+                        for row in csvdata:  # Processing file begins here.
                             vals = {'create_date': datetime.now(),
                                     'transaction_id': row["TRANSACTION ID"],
                                     'accounting_id': row["ACCOUNTING ID"],
@@ -190,23 +210,34 @@ class CaptiveaEdiProcess(models.TransientModel):
                                     'state': "Testing",
                                     }
                             # DO VALIDATIONS
+                            log_id = self.env['setu.edi.log'].search([('po_number', '=', vals['po_number']),
+                                                                      ('type', '=', 'import'),
+                                                                      ('document_type', '=', '850')])
+                            if not log_id:
+                                log_id = self.env['setu.edi.log'].create({
+                                    'po_number': vals['po_number'],
+                                    'type': 'import',
+                                    'document_type': '850'
+                                })
+                                log_ids.append(log_id.id)
+
                             STATE = self.env['captivea.ediprocess']._validate_order(vals)
                             vals['state'] = STATE
-                            res = self.env['captivea.ediprocess']._write_edi_doclog(vals)
+                            self.env['captivea.ediprocess']._write_edi_doclog(vals, log_id)
 
-                            if not vals['po_number'] in current_orders:
-                                current_orders.append(vals['po_number'])
-                            # if not res:
-                            #     return False
-                # Delete files once processed
-                ##### This code is commented for testing purpose as we dont need to remove the file.
-                # for attr in directory_structure:
-                #     file_path = ftpgpath + '/' + attr.filename
-                #     if sftp.isfile(file_path):
-                #         try:
-                #             sftp.remove(file_path)
-                #         except:
-                #             continue
+                        log_ids = self.env['setu.edi.log'].browse(log_ids)
+                        log_ids = log_ids.filtered(lambda l:l.status == 'success')
+                        if log_ids:
+                            for log in log_ids:
+                                current_orders.append(log_id.po_number)
+                                order = self.env['captivea.edidocumentlog']._create_sale_order(log)
+                                log.sale_id = order
+                                file_path = ftpgpath + '/' + attr.filename
+                                if sftp.isfile(file_path):
+                                    try:
+                                        sftp.remove(file_path)
+                                    except:
+                                        continue
                 sftp.close()
                 return current_orders
             else:
@@ -222,8 +253,6 @@ class CaptiveaEdiProcess(models.TransientModel):
     def run_edi_process(self):
         current_orders = self._grab_ftp_files()
         if current_orders:
-            # Write POA File to FTP
-            # self._create_edi_poack(current_orders, DOC_PREFIX_POA)
             self.state = 'done'
             return {
                 'name': _('EDI Process Completed'),
@@ -240,10 +269,3 @@ class CaptiveaEdiProcess(models.TransientModel):
         else:
             raise Warning('There are no files to process, or the logging or '
                           'connection have failed!')
-
-    def reload(self):
-        """
-        Reload the page
-        :return:
-        """
-        return {'type': 'ir.actions.client', 'tag': 'reload'}

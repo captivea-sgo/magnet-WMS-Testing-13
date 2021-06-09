@@ -1,19 +1,28 @@
 <?xml version="1.0"?>
 <odoo>
 
-  <record id="cap_edi_view_order_form" model="ir.ui.view">
-    <field name="name">sale.order.form</field>
-    <field name="model">sale.order</field>
-    <field name="inherit_id" ref="sale.view_order_form"/>
-    <field name="arch" type="xml">
-      <xpath expr="//header/field[@name='state']" position="before">
-        <button name="create_edi_poack" type="object" class="btn-primary" string="EDI 855"
-                attrs="{'invisible': [('edi_reference', '=', False)]}"/>
-      </xpath>
-      <field name='payment_term_id' position='after'>
-        <field name="edi_reference"/>
-      </field>
-    </field>
-  </record>
+    <record id="view_order_form" model="ir.ui.view">
+        <field name="name">sale.order.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='customer_signature']" position="after">
+                <page name="edi" string="EDI">
+                    <group>
+                        <field name="customer_po_ref" string="Customer PO Ref"/>
+                        <field name="x_edi_reference" string="PO #"/>
+                        <field name="x_edi_accounting_id"/>
+                        <field name="x_edi_store_number"/>
+                        <field name="poack_created" string="POACK Created"/>
+                    </group>
+                </page>
+            </xpath>
+            <xpath expr="//page[@name='order_lines']/field[@name='order_line']/tree/field[@name='product_id']" position="after">
+                <field name="x_edi_mismatch" string="Price Mismatch"/>
+                <field name="x_edi_po_line_number"/>
+            </xpath>
+        </field>
+    </record>
+
 
 </odoo>

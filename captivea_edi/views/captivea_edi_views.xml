@@ -1,45 +1,93 @@
 <?xml version="1.0"?>
 <odoo>
 
+    <record id="view_tree_edi_log" model="ir.ui.view">
+        <field name="name">edi.log.tree</field>
+        <field name="model">setu.edi.log</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="seq"/>
+                <field name="po_number"/>
+                <field name="type"/>
+                <field name="document_type"/>
+                <field name="status"/>
+
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_form_edi_log" model="ir.ui.view">
+        <field name="name">edi.log.form</field>
+        <field name="model">setu.edi.log</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="status" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="seq"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="po_number"/>
+                            <field name="document_type"/>
+                            <field name="sale_id" attrs="{'invisible':[('document_type','not in',['850','855'])]}"/>
+                            <field name="picking_id" attrs="{'invisible' : [('document_type','!=','856')]}"/>
+                            <field name="invoice_id" attrs="{'invisible' : [('document_type','!=','810')]}"/>
+                        </group>
+                        <group>
+                            <field name="create_date" widget="date"/>
+                            <field name="type"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="PO Log Lines" attrs="{'invisible' : [('document_type','!=','850')]}">
+                            <field name="edi_log_line_ids"/>
+                        </page>
+                        <page string="POACK Log Lines" attrs="{'invisible' : [('document_type','!=','855')]}">
+                            <field name="edi_855_log_lines"/>
+                        </page>
+                        <page string="ASN Log Lines" attrs ="{'invisible':[('document_type','!=','856')]}">
+                            <field name="edi_856_log_lines">
+                                <tree>
+                                    <field name="po_number"/>
+                                    <field name="description_sale"/>
+                                    <field name="product_id"/>
+                                    <field name="product_uom_quantity"/>
+                                    <field name="quantity_done"/>
+                                    <field name="origin_sale_order"/>
+                                    <field name="accounting_id"/>
+                                    <field name="status"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_edi_log" model="ir.actions.act_window">
+        <field name="name">EDI Log</field>
+        <field name="res_model">setu.edi.log</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
     <record id="view_tree_captivea_edidocumentlog" model="ir.ui.view">
         <field name="model">captivea.edidocumentlog</field>
         <field name="priority">15</field>
         <field name="arch" type="xml">
 
             <tree string="EDI Document Log">
-
                 <field name="create_date"/>
                 <field name="state"/>
                 <field name="transaction_id"/>
                 <field name="accounting_id"/>
                 <field name="po_number"/>
-                <!-- <field name="ship_to_name"/> -->
-                <!-- <field name="ship_to_address_1"/> -->
-                <!-- <field name="ship_to_address_2"/> -->
-                <!-- <field name="ship_to_city"/> -->
-                <!-- <field name="ship_to_state"/> -->
-                <!-- <field name="ship_to_zip"/> -->
-                <!-- <field name="ship_to_country"/> -->
-                <!-- <field name="store_number"/> -->
-                <!-- <field name="bill_to_name"/> -->
-                <!-- <field name="bill_to_address_1"/> -->
-                <!-- <field name="bill_to_address_2"/> -->
-                <!-- <field name="bill_to_city"/> -->
-                <!-- <field name="bill_to_state"/> -->
-                <!-- <field name="bill_to_zip"/> -->
-                <!-- <field name="bill_to_country"/> -->
-                <!-- <field name="bill_to_code"/> -->
-                <!-- <field name="ship_date"/> -->
-                <!-- <field name="terms"/> -->
-                <!-- <field name="note"/> -->
-                <!-- <field name="department_number"/> -->
-                <!-- <field name="cancel_date"/> -->
-                <!-- <field name="do_not_ship_before"/> -->
-                <!-- <field name="do_not_ship_after"/> -->
-                <!-- <field name="allowance_percent_1"/> -->
-                <!-- <field name="allowance_amount_1"/> -->
-                <!-- <field name="allowance_percent_2"/> -->
-                <!-- <field name="allowance_amount_2"/> -->
                 <field name="line_num"/>
                 <field name="vendor_part_num"/>
                 <field name="buyers_part_num"/>
@@ -48,13 +96,7 @@
                 <field name="quantity"/>
                 <field name="uom"/>
                 <field name="unit_price"/>
-                <!-- <field name="pack_size"/> -->
-                <!-- <field name="num_of_inner_packs"/> -->
-                <!-- <field name="item_allowance_percent"/> -->
-                <!-- <field name="item_allowance_amount"/> -->
-                
             </tree>
-        
         </field>
     </record>
 
@@ -64,58 +106,56 @@
         <field name="arch" type="xml">
             <form string="EDI Document Log">
                 <sheet>
-                <head>
-                </head>
-                <group>
-                    <field name="create_date"/>
-                    <field name="state"/>
-                    <field name="transaction_id"/>
-                    <field name="accounting_id"/>
-                    <field name="po_number"/>
-                    <field name="ship_to_name"/>
-                    <field name="ship_to_address_1"/>
-                    <field name="ship_to_address_2"/>
-                    <field name="ship_to_city"/>
-                    <field name="ship_to_state"/>
-                    <field name="ship_to_zip"/>
-                    <field name="ship_to_country"/>
-                    <field name="store_number"/>
-                    <field name="bill_to_name"/>
-                    <field name="bill_to_address_1"/>
-                    <field name="bill_to_address_2"/>
-                    <field name="bill_to_city"/>
-                    <field name="bill_to_state"/>
-                    <field name="bill_to_zip"/>
-                    <field name="bill_to_country"/>
-                    <field name="bill_to_code"/>
-                    <field name="ship_date"/>
-                    <field name="terms"/>
-                    <field name="note"/>
-                    <field name="department_number"/>
-                    <field name="cancel_date"/>
-                    <field name="do_not_ship_before"/>
-                    <field name="do_not_ship_after"/>
-                    <field name="allowance_percent_1"/>
-                    <field name="allowance_amount_1"/>
-                    <field name="allowance_percent_2"/>
-                    <field name="allowance_amount_2"/>
-                    <field name="line_num"/>
-                    <field name="vendor_part_num"/>
-                    <field name="buyers_part_num"/>
-                    <field name="upc_num"/>
-                    <field name="description"/>
-                    <field name="quantity"/>
-                    <field name="uom"/>
-                    <field name="unit_price"/>
-                    <field name="pack_size"/>
-                    <field name="num_of_inner_packs"/>
-                    <field name="item_allowance_percent"/>
-                    <field name="item_allowance_amount"/>
-                </group>
+                    <head>
+                    </head>
+                    <group>
+                        <field name="create_date"/>
+                        <field name="state"/>
+                        <field name="transaction_id"/>
+                        <field name="accounting_id"/>
+                        <field name="po_number"/>
+                        <field name="ship_to_name"/>
+                        <field name="ship_to_address_1"/>
+                        <field name="ship_to_address_2"/>
+                        <field name="ship_to_city"/>
+                        <field name="ship_to_state"/>
+                        <field name="ship_to_zip"/>
+                        <field name="ship_to_country"/>
+                        <field name="store_number"/>
+                        <field name="bill_to_name"/>
+                        <field name="bill_to_address_1"/>
+                        <field name="bill_to_address_2"/>
+                        <field name="bill_to_city"/>
+                        <field name="bill_to_state"/>
+                        <field name="bill_to_zip"/>
+                        <field name="bill_to_country"/>
+                        <field name="bill_to_code"/>
+                        <field name="ship_date"/>
+                        <field name="terms"/>
+                        <field name="note"/>
+                        <field name="department_number"/>
+                        <field name="cancel_date"/>
+                        <field name="do_not_ship_before"/>
+                        <field name="do_not_ship_after"/>
+                        <field name="allowance_percent_1"/>
+                        <field name="allowance_amount_1"/>
+                        <field name="allowance_percent_2"/>
+                        <field name="allowance_amount_2"/>
+                        <field name="line_num"/>
+                        <field name="vendor_part_num"/>
+                        <field name="buyers_part_num"/>
+                        <field name="upc_num"/>
+                        <field name="description"/>
+                        <field name="quantity"/>
+                        <field name="uom"/>
+                        <field name="unit_price"/>
+                        <field name="pack_size"/>
+                        <field name="num_of_inner_packs"/>
+                        <field name="item_allowance_percent"/>
+                        <field name="item_allowance_amount"/>
+                    </group>
                 </sheet>
             </form>
         </field>
     </record>
-
-
 </odoo>

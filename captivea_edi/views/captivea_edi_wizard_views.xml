@@ -1,24 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>    
+    <data>
         <record id="captivea_edi_manualprocess_wizard_view" model="ir.ui.view">
             <field name="model">captivea.ediprocess</field>
             <field name="arch" type="xml">
-                <form string="Captivea Edi Manual Process">
-                    <field name="state" invisible="1"/>
-                    <group states="init">
-                        <field name="active"/>
-                    </group>
-                    <group states="done" colspan="4">
-                        <span class="o_form_label">Process Completed Successfully.</span>
-                    </group>
-                    <footer states="init">
-                        <button string='Test Process' name="run_edi_process" type="object" class="btn-primary"/>
-                        <button string="Cancel" class="btn-secondary" special="cancel"/>
-                    </footer>
-                    <footer states="done">
-                        <button name="reload" string="Close" type="object" class="btn-primary"/>
-                    </footer>
+                <form string="Edi Manual Process">
+                    <sheet>
+                        <group>
+                            <field name="sftp_instance" required="True"/>
+                        </group>
+
+                        <group string="Import" attrs="{'invisible':[('export_855','=',True)]}">
+                            <field name="import_850"/>
+                        </group>
+                        <group string="Export" attrs="{'invisible':[('import_850','=',True)]}">
+                            <field name="export_855"/>
+                        </group>
+
+                        <footer>
+                            <button attrs="{'invisible':[('import_850','=',False),('export_855','=',False)]}"
+                                    string="Execute" name="button_execute" type="object" class="btn-primary"/>
+                            <button string="Cancel" class="btn-secondary" special="cancel"/>
+                        </footer>
+                    </sheet>
+
                 </form>
             </field>
         </record>
