@@ -58,4 +58,12 @@
               sequence="1"
               action="action_sale_order_documents"/>
 
+    <menuitem id="edi_config_menu"
+              name="Settings"
+              parent="captivea_menu_edi"/>
+    <menuitem id="edi_sftp_menu"
+              name="SFTP Instance"
+              parent="edi_config_menu"
+              action="setu_sftp_action"/>
+
 </odoo>

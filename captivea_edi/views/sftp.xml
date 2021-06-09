@@ -52,11 +52,5 @@
         <field name="res_model">setu.sftp</field>
         <field name="view_mode">tree,form</field>
     </record>
-    <menuitem id="edi_config_menu"
-              name="Settings"
-              parent="captivea_menu_edi"/>
-    <menuitem id="edi_sftp_menu"
-              name="SFTP Instance"
-              parent="edi_config_menu"
-              action="setu_sftp_action"/>
+
 </odoo>
