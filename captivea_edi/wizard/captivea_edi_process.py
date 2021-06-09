@@ -54,26 +54,29 @@ class CaptiveaEdiProcess(models.TransientModel):
     _name = 'captivea.ediprocess'
     _description = 'EDI manual handler model'
 
-    sftp_instance = fields.Many2one('setu.sftp', 'Instance')
+    sftp_instance = fields.Many2one('setu.sftp', 'Instance', domain=[('instance_active', '=', True)])
     active = fields.Boolean('Active?', default=True)
     state = fields.Selection([('init', 'init'), ('done', 'done')],
                              string='State', readonly=True, default='init')
+    notification = fields.Text()
     import_850 = fields.Boolean()
     export_855 = fields.Boolean()
 
-    def button_execute(self):
-        if self.import_850:
-            self.run_edi_process()
+    def reload(self):
 
-        elif self.export_855:
-            self.manual_export_poack()
-
-        else:
-            pass
         return {
             'type': 'ir.actions.client',
             'tag': 'reload',
         }
+
+    def button_execute(self):
+        if self.import_850:
+            res = self.run_edi_process()
+        elif self.export_855:
+            self.manual_export_poack()
+            res = self.reload()
+
+        return res
 
     def manual_export_poack(self):
         sales = self.env['sale.order'].search([('poack_created', '=', False),
@@ -106,7 +109,7 @@ class CaptiveaEdiProcess(models.TransientModel):
         else:
             # Product Validation
             if not self.env['product.product'].sudo().search(
-                    [('default_code', '=', vals['vendor_part_num'])]):
+                    [('default_code', '=', vals['vendor_part_num'].strip())]):
                 validation_msg = "Failed! Product does not exists."
             else:
                 validation_msg = "Pass"
@@ -120,8 +123,11 @@ class CaptiveaEdiProcess(models.TransientModel):
         :return:
         """
         current_orders = list()
-        company = self.env.company
-        sftp_conf = self.env['setu.sftp'].search([('company_id', '=', company.id)])
+        failed_log_ids = self.env['setu.edi.log']
+        files_to_remove = list()
+        # company = self.env.company
+        # sftp_conf = self.env['setu.sftp'].search([('company_id', '=', company.id)])
+        sftp_conf = self.sftp_instance
         ftpserver = sftp_conf['ftp_server']
         if not ftpserver:
             raise Warning('FTP Host parameter missed!')
@@ -147,13 +153,14 @@ class CaptiveaEdiProcess(models.TransientModel):
             if sftp:
                 sftp.cwd(ftpgpath)
                 directory_structure = sftp.listdir_attr()
+
                 for attr in directory_structure:
                     file_path = ftpgpath + '/' + attr.filename
                     if sftp.isfile(file_path):
                         csvfile = sftp.open(file_path)
                         csvdata = csv.DictReader(csvfile)
                         log_id = False
-                        log_ids = []
+                        log_ids = self.env['setu.edi.log']
                         for row in csvdata:  # Processing file begins here.
                             vals = {'create_date': datetime.now(),
                                     'transaction_id': row["TRANSACTION ID"],
@@ -194,7 +201,7 @@ class CaptiveaEdiProcess(models.TransientModel):
                                     'allowance_amount_2': row[
                                         "ALLOWANCE AMOUNT 2"],
                                     'line_num': row["LINE #"],
-                                    'vendor_part_num': row["VENDOR PART #"],
+                                    'vendor_part_num': row["VENDOR PART #"].strip(),
                                     'buyers_part_num': row["BUYERS PART #"],
                                     'upc_num': row["UPC #"],
                                     'description': row["DESCRIPTION"],
@@ -219,27 +226,47 @@ class CaptiveaEdiProcess(models.TransientModel):
                                     'type': 'import',
                                     'document_type': '850'
                                 })
-                                log_ids.append(log_id.id)
+                            log_ids |= log_id
 
                             STATE = self.env['captivea.ediprocess']._validate_order(vals)
                             vals['state'] = STATE
                             self.env['captivea.ediprocess']._write_edi_doclog(vals, log_id)
 
-                        log_ids = self.env['setu.edi.log'].browse(log_ids)
-                        log_ids = log_ids.filtered(lambda l:l.status == 'success')
-                        if log_ids:
-                            for log in log_ids:
+                        success_log_ids = log_ids.filtered(lambda l: l.status == 'success')
+                        failed_log_ids = log_ids.filtered(lambda l: l.status != 'success')
+                        if success_log_ids:
+                            for log in success_log_ids:
                                 current_orders.append(log_id.po_number)
                                 order = self.env['captivea.edidocumentlog']._create_sale_order(log)
                                 log.sale_id = order
                                 file_path = ftpgpath + '/' + attr.filename
-                                if sftp.isfile(file_path):
-                                    try:
-                                        sftp.remove(file_path)
-                                    except:
-                                        continue
+                                files_to_remove.append(file_path)
+                                # if sftp.isfile(file_path):
+                                #     try:
+                                #         # sftp.remove(file_path)
+                                #         sftp.remove(file_path)
+                                #     except Exception as e:
+                                #         continue
+                # for file_path in files_to_remove:
+                #     if sftp.isfile(file_path):
+                #         try:
+                #             # sftp.remove(file_path)
+                #             sftp.remove(file_path)
+                #         except Exception as e:
+                #             continue
                 sftp.close()
-                return current_orders
+
+            sftp = pysftp.Connection(host=ftpserver, username=ftpuser, password=ftpsecret, port=ftpport,
+                                     cnopts=cnopts)
+            if sftp:
+                for file_path in files_to_remove:
+                    if sftp.isfile(file_path):
+                        try:
+                            sftp.remove(file_path)
+                        except Exception as e:
+                            continue
+
+                return current_orders, failed_log_ids
             else:
                 return False
         except Exception as e:
@@ -251,21 +278,28 @@ class CaptiveaEdiProcess(models.TransientModel):
                 raise Warning(e.args[0])
 
     def run_edi_process(self):
-        current_orders = self._grab_ftp_files()
-        if current_orders:
-            self.state = 'done'
-            return {
-                'name': _('EDI Process Completed'),
-                'view_type': 'form',
-                'view_mode': 'form',
-                'view_id': False,
-                'res_model': 'captivea.ediprocess',
-                'domain': [],
-                'context': dict(self._context, active_ids=self.ids),
-                'type': 'ir.actions.act_window',
-                'target': 'new',
-                'res_id': self.id,
-            }
+        current_orders, failed_log_ids = self._grab_ftp_files()
+        if failed_log_ids:
+            log_names = " ,".join(failed_log_ids.mapped('seq'))
+        if current_orders and not failed_log_ids:
+            self.notification = 'All files processed successfully.'
+        elif current_orders and failed_log_ids:
+            self.notification = 'Operation completed successfully but some of the files could not process. Please ' \
+                                'check log of ' + log_names
+        elif failed_log_ids and not current_orders:
+            self.notification = 'All files failed processing. Please check log of ' + log_names
         else:
-            raise Warning('There are no files to process, or the logging or '
-                          'connection have failed!')
+            self.notification = 'No files found to process.'
+
+        return {
+            'name': _('EDI Process Completed'),
+            'view_type': 'form',
+            'view_mode': 'form',
+            'view_id': False,
+            'res_model': 'captivea.ediprocess',
+            'domain': [],
+            'context': dict(self._context, active_ids=self.ids),
+            'type': 'ir.actions.act_window',
+            'target': 'new',
+            'res_id': self.id,
+        }

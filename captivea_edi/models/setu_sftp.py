@@ -9,6 +9,7 @@ class ResCompany(models.Model):
     _name = 'setu.sftp'
     _rec_name = 'company_id'
 
+    instance_active = fields.Boolean()
     company_id = fields.Many2one('res.company', string='Company', required=True)
     ftp_server = fields.Char('FTP Server', required=True)
     ftp_port = fields.Integer('FTP Port', required=True)
@@ -22,7 +23,13 @@ class ResCompany(models.Model):
     enable_cron = fields.Boolean('Enable Automated Process', default=False)
     ir_cron_id = fields.Many2one('ir.cron', string='Configure Automated Process')
 
-    @api.constrains('company_id')
+    @api.constrains('instance_active')
+    def validate_instance(self):
+        if self.search(
+                [('id', '!=', self.id), ('company_id', '=', self.company_id.id), ('instance_active', '=', True)]):
+            raise ValidationError(_("Company's one Configuration is already active."))
+
+    @api.constrains('company_id', 'instance_active')
     def validate_company(self):
         if self.search(
                 [('id', '!=', self.id), ('company_id', '=', self.company_id.id), ('ftp_server', '=', self.ftp_server)]):

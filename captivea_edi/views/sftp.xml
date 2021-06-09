@@ -20,7 +20,7 @@
                 <sheet>
                     <div class="oe_title">
                         <h3>
-                            <field name="company_id"/>
+                            <field name="company_id" options="{'no_create':1, 'no_create_edit': 1}"/>
                         </h3>
                     </div>
                     <group>
@@ -33,6 +33,7 @@
                             <field name="ftp_invack_dpath"/>
                         </group>
                         <group>
+                            <field name="instance_active"/>
                             <field name="ftp_user"/>
                             <field name="ftp_secret" password="True"/>
                             <!--			            <field name="ftp_tls"/>-->

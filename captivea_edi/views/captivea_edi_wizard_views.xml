@@ -6,21 +6,24 @@
             <field name="arch" type="xml">
                 <form string="Edi Manual Process">
                     <sheet>
-                        <group>
-                            <field name="sftp_instance" required="True"/>
+                        <group attrs="{'invisible':[('notification','=',False)]}">
+                            <field name="notification" nolabel = "1" readonly = "1"/>
+                        </group>
+                        <group attrs="{'invisible':[('notification','!=',False)]}">
+                            <field name="sftp_instance" required="True" options="{'no_create':1, 'no_create_edit': 1}"/>
                         </group>
 
-                        <group string="Import" attrs="{'invisible':[('export_855','=',True)]}">
+                        <group string="Import" attrs="{'invisible':['|',('export_855','=',True),('notification','!=',False)]}">
                             <field name="import_850"/>
                         </group>
-                        <group string="Export" attrs="{'invisible':[('import_850','=',True)]}">
+                        <group string="Export" attrs="{'invisible':[('import_850','=',True),'|',('notification','!=',False)]}">
                             <field name="export_855"/>
                         </group>
 
                         <footer>
-                            <button attrs="{'invisible':[('import_850','=',False),('export_855','=',False)]}"
+                            <button attrs="{'invisible':['|',('notification','!=',False),'&amp;',('import_850','=',False),('export_855','=',False),]}"
                                     string="Execute" name="button_execute" type="object" class="btn-primary"/>
-                            <button string="Cancel" class="btn-secondary" special="cancel"/>
+                            <button string="Cancel" name="reload" class="btn-secondary" type="object"/>
                         </footer>
                     </sheet>
 

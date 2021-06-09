@@ -5,7 +5,7 @@
         <field name="name">edi.log.tree</field>
         <field name="model">setu.edi.log</field>
         <field name="arch" type="xml">
-            <tree>
+            <tree create="false" edit="false">
                 <field name="seq"/>
                 <field name="po_number"/>
                 <field name="type"/>

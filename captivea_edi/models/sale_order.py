@@ -55,7 +55,7 @@ class SaleOrder(models.Model):
     x_edi_accounting_id = fields.Char('Accounting ID')
     x_edi_store_number = fields.Char('Store number')
     x_edi_flag = fields.Boolean('EDI Flag')
-    poack_created = fields.Boolean()
+    poack_created = fields.Boolean(string="Acknowledged?")
     customer_po_ref = fields.Many2one('setu.edi.log')
     poack_ref = fields.Many2one('setu.edi.log')
 
@@ -69,7 +69,7 @@ class SaleOrder(models.Model):
     def poack_export(self, log_id, DOC_PREFIX_POA):
 
         company = self.company_id
-        sftp_conf = self.env['setu.sftp'].search([('company_id', '=', company.id)])
+        sftp_conf = self.env['setu.sftp'].search([('company_id', '=', company.id), ('instance_active', '=', True)])
         ftpserver = sftp_conf['ftp_server']
         ftpport = sftp_conf['ftp_port']
         ftpuser = sftp_conf['ftp_user']
@@ -156,5 +156,3 @@ class SaleOrder(models.Model):
             self.create_poack_export_log(DOC_PREFIX_POA)
             if self.picking_ids:
                 self.picking_ids.x_edi_accounting_id = self.x_edi_accounting_id
-
-

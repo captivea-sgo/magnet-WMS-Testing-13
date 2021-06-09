@@ -9,7 +9,7 @@
     </record>
 
     <record id="action_captivea_ediwizardprocess" model="ir.actions.act_window">
-        <field name="name">Captivea EDI Process</field>
+        <field name="name">EDI Operations</field>
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">captivea.ediprocess</field>
         <field name="view_id" ref="captivea_edi_manualprocess_wizard_view"/>
@@ -25,9 +25,18 @@
         <field name="domain">[('x_edi_reference', '!=', False)]</field>
     </record>
 
+    <record id="action_sale_order_ackn_remaining" model="ir.actions.act_window">
+        <field name="type">ir.actions.act_window</field>
+        <field name="name">Sale Orders To Acknowledge</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('x_edi_reference', '!=', False),('poack_created','=',False)]</field>
+    </record>
+
     <!-->MENU ROOT<-->
     <menuitem id="captivea_menu_edi"
               name="TrueCommerce"
+              groups="group_captivea_edi_user"
               web_icon="captivea_edi,static/description/icon.png"
               sequence="100"/>
 
@@ -57,6 +66,12 @@
               parent="setu_edi_documents"
               sequence="1"
               action="action_sale_order_documents"/>
+
+    <menuitem id="setu_edi_sale_order_ackn"
+              name="Sale Orders To Acknowledge"
+              parent="setu_edi_documents"
+              sequence="5"
+              action="action_sale_order_ackn_remaining"/>
 
     <menuitem id="edi_config_menu"
               name="Settings"
